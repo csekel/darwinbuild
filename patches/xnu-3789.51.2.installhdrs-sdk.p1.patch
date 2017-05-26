@@ -1,0 +1,71 @@
+diff --git a/config/SDKSettings.plist b/config/SDKSettings.plist
+new file mode 100644
+index 0000000..2c1a36e
+--- /dev/null
++++ b/config/SDKSettings.plist
+@@ -0,0 +1,36 @@
++<?xml version="1.0" encoding="utf-8"?>
++<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
++<plist>
++<dict>
++    <key>CanonicalName</key>
++    <string>puredarwin</string>
++    <key>CustomProperties</key>
++    <dict>
++    </dict>
++    <key>DefaultProperties</key>
++    <dict>
++        <key>MACOSX_DEPLOYMENT_TARGET</key>
++        <string>10.12</string>
++        <key>PLATFORM_NAME</key>
++        <string>macosx</string>
++        <key>DEFAULT_KEXT_INSTALL_PATH</key>
++        <string>$(LIBRARY_KEXT_INSTALL_PATH)</string>
++    </dict>
++    <key>DisplayName</key>
++    <string>PureDarwin</string>
++    <key>MaximumDeploymentTarget</key>
++    <string>10.12</string>
++    <key>MinimalDisplayName</key>
++    <string>10.12</string>
++    <key>MinimumSupportedToolsVersion</key>
++    <string>3.2</string>
++    <key>SupportedBuildToolComponents</key>
++    <array>
++        <string>com.apple.compilers.gcc.headers.4_2</string>
++    </array>
++    <key>Version</key>
++    <string>10.12</string>
++    <key>isBaseSDK</key>
++    <string>YES</string>
++</dict>
++</plist>
+diff --git a/makedefs/MakeInc.top b/makedefs/MakeInc.top
+index c19e8e5..af4361c 100644
+--- a/makedefs/MakeInc.top
++++ b/makedefs/MakeInc.top
+@@ -344,7 +344,24 @@ installhdrs:
+ 	@:
+ else
+ 
++PD_SDKROOT=$(DSTROOT)/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/PureDarwin.sdk
+ installhdrs: installhdrs_mi installhdrs_md
++	mkdir -p $(PD_SDKROOT)
++	cp -pf $(SRCROOT)/config/SDKSettings.plist $(PD_SDKROOT)
++
++	mkdir -p $(PD_SDKROOT)/usr $(PD_SDKROOT)/usr/local
++	mv -f $(DSTROOT)/usr/include $(PD_SDKROOT)/usr/include
++	mv -f $(DSTROOT)/usr/local/include $(PD_SDKROOT)/usr/local/include
++
++	mkdir -p $(PD_SDKROOT)/System/Library/Frameworks
++	mv -f $(DSTROOT)/System/Library/Frameworks/IOKit.framework $(PD_SDKROOT)/System/Library/Frameworks/IOKit.framework
++	mv -f $(DSTROOT)/System/Library/Frameworks/Kernel.framework $(PD_SDKROOT)/System/Library/Frameworks/Kernel.framework
++	mv -f $(DSTROOT)/System/Library/Frameworks/System.framework $(PD_SDKROOT)/System/Library/Frameworks/System.framework
++	@-rmdir $(DSTROOT)/usr/local
++	@-rmdir $(DSTROOT)/usr
++	@-rmdir $(DSTROOT)/System/Library/Frameworks
++	@-rmdir $(DSTROOT)/System/Library
++	@-rmdir $(DSTROOT)/System
+ endif
+ 
+ .PHONY: installhdrs_embedded installhdrs_release_embedded installhdrs_development_embedded installhdrs_desktop
