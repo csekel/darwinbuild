@@ -1,6 +1,6 @@
 diff --git a/config/SDKSettings.plist b/config/SDKSettings.plist
 new file mode 100644
-index 0000000..2c1a36e
+index 0000000..37f0d37
 --- /dev/null
 +++ b/config/SDKSettings.plist
 @@ -0,0 +1,36 @@
@@ -9,7 +9,7 @@ index 0000000..2c1a36e
 +<plist>
 +<dict>
 +    <key>CanonicalName</key>
-+    <string>puredarwin</string>
++    <string>macosx.internal</string>
 +    <key>CustomProperties</key>
 +    <dict>
 +    </dict>
@@ -23,7 +23,7 @@ index 0000000..2c1a36e
 +        <string>$(LIBRARY_KEXT_INSTALL_PATH)</string>
 +    </dict>
 +    <key>DisplayName</key>
-+    <string>PureDarwin</string>
++    <string>macOS 10.12 (PureDarwin Internal)</string>
 +    <key>MaximumDeploymentTarget</key>
 +    <string>10.12</string>
 +    <key>MinimalDisplayName</key>
@@ -36,19 +36,19 @@ index 0000000..2c1a36e
 +    </array>
 +    <key>Version</key>
 +    <string>10.12</string>
-+    <key>isBaseSDK</key>
++    <key>IsBaseSDK</key>
 +    <string>YES</string>
 +</dict>
 +</plist>
 diff --git a/makedefs/MakeInc.top b/makedefs/MakeInc.top
-index c19e8e5..af4361c 100644
+index c19e8e5..a301afb 100644
 --- a/makedefs/MakeInc.top
 +++ b/makedefs/MakeInc.top
-@@ -344,7 +344,24 @@ installhdrs:
+@@ -344,7 +344,28 @@ installhdrs:
  	@:
  else
  
-+PD_SDKROOT=$(DSTROOT)/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/PureDarwin.sdk
++PD_SDKROOT=$(DSTROOT)/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.12.internal.sdk
  installhdrs: installhdrs_mi installhdrs_md
 +	mkdir -p $(PD_SDKROOT)
 +	cp -pf $(SRCROOT)/config/SDKSettings.plist $(PD_SDKROOT)
@@ -61,6 +61,10 @@ index c19e8e5..af4361c 100644
 +	mv -f $(DSTROOT)/System/Library/Frameworks/IOKit.framework $(PD_SDKROOT)/System/Library/Frameworks/IOKit.framework
 +	mv -f $(DSTROOT)/System/Library/Frameworks/Kernel.framework $(PD_SDKROOT)/System/Library/Frameworks/Kernel.framework
 +	mv -f $(DSTROOT)/System/Library/Frameworks/System.framework $(PD_SDKROOT)/System/Library/Frameworks/System.framework
++
++	mkdir -p $(PD_SDKROOT)/System/Library/CoreServices
++	cp -pf /System/Library/CoreServices/SystemVersion.plist $(PD_SDKROOT)/System/Library/CoreServices
++
 +	@-rmdir $(DSTROOT)/usr/local
 +	@-rmdir $(DSTROOT)/usr
 +	@-rmdir $(DSTROOT)/System/Library/Frameworks
