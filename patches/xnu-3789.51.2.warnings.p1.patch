@@ -1,0 +1,20 @@
+diff --git a/makedefs/MakeInc.def b/makedefs/MakeInc.def
+index 9edf262..d42a834 100644
+--- a/makedefs/MakeInc.def
++++ b/makedefs/MakeInc.def
+@@ -106,6 +106,7 @@ CWARNFLAGS_STD = \
+ 	-Wno-documentation-unknown-command \
+ 	-Wno-format-non-iso \
+ 	-Wno-format-nonliteral \
++	-Wno-ignored-attributes \
+ 	-Wno-reserved-id-macro \
+ 	-Wno-language-extension-token \
+ 	-Wno-missing-variable-declarations \
+@@ -114,6 +115,7 @@ CWARNFLAGS_STD = \
+ 	-Wno-partial-availability \
+ 	-Wno-pedantic \
+ 	-Wno-shift-sign-overflow \
++	-Wno-strict-prototypes \
+ 	-Wno-switch-enum \
+ 	-Wno-undef \
+ 	-Wno-unused-macros \
