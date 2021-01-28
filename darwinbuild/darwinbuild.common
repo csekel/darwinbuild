@@ -155,6 +155,54 @@ function Download() {
 	done
 }
 
+function _CopyRoot() {
+	local src="$1"
+	local dstroot="$2"
+
+	OLD_IFS=$IFS
+	IFS='
+'
+	find $src '!' -type l > /tmp/root.$$.txt
+	while read line; do
+		line=$(echo $line | sed -Ee "s,$src/?,,g")
+
+		if [ -L "$src/$line" ]; then
+			echo "Error: We should not see any symbolic links here"
+			exit 1
+		else
+			if [ -d "$src/$line" ]; then
+				if [ -L $dstroot/$line ]; then
+					rm $dstroot/$line
+				fi
+
+				mkdir -p $dstroot/$line
+			else
+				mkdir -p $(dirname $dstroot/$line)
+				rm -f $dstroot/$line
+				ditto $src/$line $dstroot/$line
+			fi
+		fi
+	done < /tmp/root.$$.txt
+	rm /tmp/root.$$.txt
+
+	# Symbolic links must be processed last, so that their
+	# targets are all created beforehand.
+	find $src -type l > /tmp/root-links.$$.txt
+	while read line; do
+		line=$(echo $line | sed -Ee "s,$src/?,,g")
+		dirname=$(dirname $line)
+		basename=$(basename $line)
+
+		pushd $dstroot/$dirname > /dev/null
+		rm -f $basename
+		ln -s "$(readlink $src/$line)" $basename
+		popd > /dev/null
+	done < /tmp/root-links.$$.txt
+	rm -f /tmp/root-links.$$.txt
+
+	IFS=$OLD_IFS
+}
+
 ###
 ### Installs a root into the BuildRoot. Mediates between
 ### receipts, pre-built roots, and self-built roots, so that
@@ -206,7 +254,7 @@ function InstallRoot() {
 	# install a self-built root, or a prebuilt root, or nothing
 	if [ $InstallSelfBuiltRoot -eq 1 ]; then
 		echo "Copying $Project from $SelfBuiltRoot ..."
-		ditto "$SelfBuiltRoot" "$BuildRoot"
+		_CopyRoot "$SelfBuiltRoot" "$BuildRoot/Developer/SDKs/PureDarwin.sdk"
 
 		"$DARWINXREF" register "$Project" "$SelfBuiltRoot"  > /dev/null
 		TouchReceipt "$BuildRoot" "$Project" "root"
@@ -330,13 +378,13 @@ function InstallHeader() {
 	# install a self-built root, or a prebuilt root, or nothing
 	if [ $InstallSelfBuiltHeader -eq 1 ]; then
 		echo "Copying $Project from $SelfBuiltHeader ..."
-		ditto "$SelfBuiltHeader" "$BuildRoot"
+		_CopyRoot $SelfBuiltHeader/ "$BuildRoot/Developer/SDKs/PureDarwin.sdk"
 		"$DARWINXREF" register "$Project" "$SelfBuiltHeader"  > /dev/null
 		TouchReceipt "$BuildRoot" "$Project" "hdrs"
 		return 0
 	elif [ $InstallSelfBuiltRoot -eq 1 ]; then
 		echo "Copying $Project from $SelfBuiltRoot ..."
-		ditto "$SelfBuiltRoot" "$BuildRoot"
+		_CopyRoot $SelfBuiltRoot/ "$BuildRoot/Developer/SDKs/PureDarwin.sdk"
 		"$DARWINXREF" register "$Project" "$SelfBuiltRoot"  > /dev/null
 		TouchReceipt "$BuildRoot" "$Project" "root"
 		return 0
@@ -530,9 +578,82 @@ function WriteDarwinbuildXcodeConfig() {
 	local SRCROOT="$2"
 
 	cat <<-EOF > $SRCROOT/darwinbuild.xcconfig
-DEPROOT = $BuildRoot
-SYSTEM_HEADER_SEARCH_PATHS = \$(DEPROOT)/System/Library/Frameworks/System.framework/PrivateHeaders \$(DEPROOT)/usr/include \$(DEPROOT)/usr/local/include
-FRAMEWORK_SEARCH_PATHS = \$(DEPROOT)/System/Library/Frameworks \$(DEPROOT)/System/Library/PrivateFrameworks
-LIBRARY_SEARCH_PATHS = \$(DEPROOT)/usr/local/lib \$(DEPROOT)/usr/lib
+DEPROOT = $BuildRoot/Developer/SDKs/MacOSX.sdk
+SDKROOT = \$(DEPROOT)
+ADDITIONAL_SDKS = \$(DEPROOT)
 EOF
+}
+
+function _CreatePureDarwinSDKFile() {
+	local OUR_SDK=$1
+	local APPLE_SDK=$2
+
+	local APPLE_FILE=$APPLE_SDK/$3
+	local OUR_FILE=$OUR_SDK/$3
+
+	local OUR_FILE_DIR=$(dirname $OUR_FILE)
+	local OUR_FILE_BASE=$(basename $OUR_FILE)
+
+	if [ -e "$OUR_FILE" ]; then
+		return 0
+	fi
+
+	mkdir -p "$OUR_FILE_DIR"
+	pushd "$OUR_FILE_DIR" > /dev/null
+
+	if [ -L $OUR_FILE_BASE ]; then
+		# Delete any old symlinks, so we don't follow them.
+		rm -f $OUR_FILE_BASE
+	fi
+
+	ln -s $APPLE_FILE $OUR_FILE_BASE
+	popd > /dev/null
+}
+
+function CreatePureDarwinSDK() {
+	local OUR_SDK=$1
+	local APPLE_SDK=$(xcrun -sdk macosx --show-sdk-path)
+
+	mkdir -p $OUR_SDK
+	cp /usr/local/share/darwinbuild/PDSDKSettings.plist $OUR_SDK/SDKSettings.plist
+
+	mkdir -p $OUR_SDK/usr/include
+	pushd $APPLE_SDK/usr/include > /dev/null
+	find . -name '*.h' -print > /tmp/sdk-usr-include.$$.txt
+	find . -name '*.modulemap' -print >> /tmp/sdk-usr-include.$$.txt
+	popd > /dev/null
+
+	OLD_IFS=$IFS
+	IFS='
+'
+	while read line; do
+		_CreatePureDarwinSDKFile $OUR_SDK $APPLE_SDK "usr/include/$line"
+	done < /tmp/sdk-usr-include.$$.txt
+	rm -f /tmp/sdk-usr-include.$$.txt
+
+	mkdir -p $OUR_SDK/usr/lib
+	pushd $APPLE_SDK/usr/lib > /dev/null
+	find . -name '*.tbd' -print > /tmp/sdk-usr-lib.$$.txt
+	while read line; do
+		_CreatePureDarwinSDKFile $OUR_SDK $APPLE_SDK "usr/lib/$line"
+	done < /tmp/sdk-usr-lib.$$.txt
+	rm -f /tmp/sdk-usr-lib.$$.txt
+
+	# Swift requires special handling, since there are more than tbd's in there.
+	rm -rf ${OUR_SDK}/usr/lib/swift
+	ditto ${APPLE_SDK}/usr/lib/swift ${OUR_SDK}/usr/lib/swift
+
+	mkdir -p $OUR_SDK/System/Library/Frameworks
+	pushd $APPLE_SDK/System/Library/Frameworks > /dev/null
+
+	find . -name \*.framework -depth 1 > /tmp/sdk-sys.$$.txt
+	mkdir -p $OUR_SDK/System/Library/Frameworks
+	mkdir -p $OUR_SDK/System/Library/PrivateFrameworks
+	while read line; do
+		_CreatePureDarwinSDKFile $OUR_SDK $APPLE_SDK "System/Library/Frameworks/$line"
+	done < /tmp/sdk-sys.$$.txt
+	rm -f /tmp/sdk-sys.$$.txt
+
+	popd > /dev/null
+	IFS=$OLD_IFS
 }

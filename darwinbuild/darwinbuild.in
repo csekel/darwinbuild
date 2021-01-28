@@ -86,6 +86,7 @@ target=""
 configuration=""
 version=""
 codesign="-"
+use_sdkroot="true"
 
 INSTALL_XCODE="NO"
 
@@ -181,7 +182,7 @@ function PrintUsage() {
 	actions: [-headers] [-fetch] [-source] [-load] [-loadonly] [-recursive] [-group]
 	options: [-build=X] [-target=X] [-configuration=X]
 	         [-logdeps] [-nopatch] [-noload] [-codesign=<identity>]
-	         [-depsbuild=X [-depsbuild=Y]] [-nosource]
+	         [-depsbuild=X [-depsbuild=Y]] [-nosource] [-nosdk]
 
 EOF
 	exit 1
@@ -331,6 +332,8 @@ for ARG in "$@"; do
 				echo "Using default ad-hoc signing." 1>&2
 				codesign=-
 			fi
+		elif [ "${ARG}" == "-nosdk" ]; then
+			use_sdkroot="false"
 		elif [ "${ARG:0:1}" != "-" ]; then
 			projnam="$ARG"
 		else
@@ -474,13 +477,7 @@ if [ "$nosource" != "YES" ]; then
 	fi
 fi
 
-###
-### We do our building in private/var/tmp since it's
-### likely to be out of the way of our dependencies
-### and is supposed to be writable by everyone.
-###
-
-vartmp="private/var/tmp"
+vartmp="BuildCache"
 mkdir -p "$BuildRoot/$vartmp"
 chmod 1777 "$BuildRoot/$vartmp"
 
@@ -491,6 +488,33 @@ SRCROOT="$BuildRoot/SourceCache/$projnam/$project"
 OBJROOT="$BuildRoot/$vartmp/$projnam/$project.obj"
 SYMROOT="$BuildRoot/$vartmp/$projnam/$project.sym"
 DSTROOT="$BuildRoot/$vartmp/$projnam/$project.root"
+
+###
+### Create the PureDarwin Xcode SDK.
+###
+mkdir -p $BuildRoot/Developer/SDKs
+if [ ! -f "$BuildRoot/Developer/.CreatedPureDarwinSDK" -a "$use_sdkroot" == "true" ]; then
+	echo "*** Creating fresh PureDarwin SDK, this may take a while ..."
+
+	# Remove the entire old SDK, to guarantee that we don't
+	# mistakenly follow a symlink into Apple's SDK and overwrite
+	# files provided by Apple. If this happens, Xcode must be
+	# reinstalled, and that takes a long time.
+	rm -rf "$BuildRoot/Developer/SDKs/PureDarwin.sdk"
+	CreatePureDarwinSDK "$BuildRoot/Developer/SDKs/PureDarwin.sdk"
+
+	rmdir "$BuildRoot/usr/local/darwinbuild/receipts" || :
+	pushd "$BuildRoot/usr/local/darwinbuild" > /dev/null
+	ln -sfh ../../../Developer/SDKs/PureDarwin.sdk/usr/local/darwinbuild/receipts receipts
+	popd > /dev/null
+
+	# This is necessary to squelch an Xcode warning.
+	pushd "$BuildRoot/Developer/SDKs" > /dev/null
+	ln -sfh PureDarwin.sdk MacOSX.sdk
+	popd > /dev/null
+
+	touch "$BuildRoot/Developer/.CreatedPureDarwinSDK"
+fi
 
 if [ "$nosource" != "YES" ]; then
 	###
@@ -660,7 +684,7 @@ elif [ "$target" != "" ]; then
 fi
 
 if [ "$buildtool" == "make" ]; then
-	build_string="$build_string DEPROOT=$BuildRoot"
+	build_string="$build_string DEPROOT=$BuildRoot/Developer/SDKs/MacOSX.sdk"
 fi
 
 #
@@ -702,9 +726,7 @@ cat <<-EOF > $SCRIPT
 	echo '    Build action:         $action'
 	echo "    Build number:         $build"
 	echo "    Host kernel version:  \$(uname -v 2>/dev/null)"
-	echo "    cc version:           \$(gcc -v 2>&1 | grep version 2>/dev/null)"
-	# Panther cctools unlinks -o target, so don't use /dev/null
-	echo "    cctools version:      \$(as -v -o /.devnull < /dev/null 2>&1 | grep version | grep -v dwarf-version 2>/dev/null)"
+	echo "    clang version:        \$(clang -v 2>&1 | grep version 2>/dev/null)"
 EOF
 
 if [ "$buildtool" == "xcodebuild" ]; then
@@ -730,6 +752,10 @@ EOF
 ###
 build_string="$build_string \"SRCROOT=$SRCROOT\" \"OBJROOT=$OBJROOT\" \"SYMROOT=$SYMROOT\" \"DSTROOT=$DSTROOT\""
 
+if [ "$buildtool" == "xcodebuild" -a "$use_sdkroot" == "true" ]; then
+	build_string="$build_string SDKROOT=$BuildRoot/Developer/SDKs/MacOSX.sdk"
+fi
+
 XREF_ENV=$($DARWINXREF environment $projnam)
 OLDIFS="$IFS"
 IFS=$'\n'
@@ -741,9 +767,6 @@ for X in \
 	build_string="$build_string \"$X\""
 done
 IFS="$OLDIFS"
-
-export RC_BuildRoot=$BuildRoot
-build_string="$build_string \"RC_BuildRoot=$BuildRoot\""
 
 cat <<-EOF >> $SCRIPT
 	echo '++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++'
@@ -834,7 +857,7 @@ if [ "$EXIT_STATUS" == "0" ]; then
 	###
 
 	if [ "$action" == "installhdrs" ]; then
-	    	### Output the manifest
+		### Output the manifest
 		MANIFEST="/tmp/$projnam.$$"
 		"$DARWINXREF" register "$projnam" "$DSTROOT" | tee "$MANIFEST"
 		SHA1=$(cat "$MANIFEST" | $DIGEST)

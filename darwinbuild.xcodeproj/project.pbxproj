@@ -101,6 +101,7 @@
 		1FCA51B722E6562800D55269 /* main.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1FCA51B622E6562800D55269 /* main.swift */; };
 		1FCA51BC22E6562F00D55269 /* Utilities.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1FF4AFCB22E5237B002F09C6 /* Utilities.swift */; };
 		1FCA51BF22E6563C00D55269 /* SwiftCLI in Frameworks */ = {isa = PBXBuildFile; productRef = 1FCA51BE22E6563C00D55269 /* SwiftCLI */; };
+		1FDAA0F525281B7700B92892 /* PDSDKSettings.plist in CopyFiles */ = {isa = PBXBuildFile; fileRef = 1FDAA0F425281B7500B92892 /* PDSDKSettings.plist */; };
 		1FDE55C024DB9DE1009ED847 /* libtcl8.6.dylib in Copy libtcl8.6.dylib */ = {isa = PBXBuildFile; fileRef = 1FDE55BD24DB9DBD009ED847 /* libtcl8.6.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
 		1FECB5DF1FBBBD41002EA059 /* setXcodePlatform in Copy Files */ = {isa = PBXBuildFile; fileRef = 1FECB5DE1FBBBC09002EA059 /* setXcodePlatform */; };
 		1FF3C41A24EAF989002A5356 /* libtcl8.6.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 1FDE55BD24DB9DBD009ED847 /* libtcl8.6.dylib */; };
@@ -607,6 +608,16 @@
 			);
 			runOnlyForDeploymentPostprocessing = 1;
 		};
+		1FDAA0F325281B5D00B92892 /* CopyFiles */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 8;
+			dstPath = /usr/local/share/darwinbuild;
+			dstSubfolderSpec = 0;
+			files = (
+				1FDAA0F525281B7700B92892 /* PDSDKSettings.plist in CopyFiles */,
+			);
+			runOnlyForDeploymentPostprocessing = 1;
+		};
 		1FDE55BF24DB9DD1009ED847 /* Copy libtcl8.6.dylib */ = {
 			isa = PBXCopyFilesBuildPhase;
 			buildActionMask = 8;
@@ -666,6 +677,7 @@
 		1FCA51B622E6562800D55269 /* main.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = main.swift; sourceTree = "<group>"; };
 		1FD9F0CD21B9E90700FB866A /* build.sh */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.sh; name = build.sh; path = installer/build.sh; sourceTree = "<group>"; };
 		1FD9F0CF21B9EAA300FB866A /* distribution.xml */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xml; name = distribution.xml; path = installer/distribution.xml; sourceTree = "<group>"; };
+		1FDAA0F425281B7500B92892 /* PDSDKSettings.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = PDSDKSettings.plist; path = darwinbuild/PDSDKSettings.plist; sourceTree = "<group>"; };
 		1FDE256A24D75B4900CBC605 /* vendor-tcl.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; name = "vendor-tcl.sh"; path = "darwinxref/vendor-tcl.sh"; sourceTree = "<group>"; };
 		1FDE55BD24DB9DBD009ED847 /* libtcl8.6.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libtcl8.6.dylib; path = darwinxref/libtcl8.6.dylib; sourceTree = "<group>"; };
 		1FEA10392264FBCF008B675D /* notarize.sh */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.sh; name = notarize.sh; path = installer/notarize.sh; sourceTree = "<group>"; };
@@ -1076,6 +1088,7 @@
 		72C86BD510965DC900C66E90 /* darwinbuild */ = {
 			isa = PBXGroup;
 			children = (
+				1FDAA0F425281B7500B92892 /* PDSDKSettings.plist */,
 				720BE2E9120C909E00B3C4A5 /* digest.c */,
 				7227AB871098A7BF00BE33D7 /* buildlist */,
 				7227AB881098A7BF00BE33D7 /* buildorder */,
@@ -1821,6 +1834,7 @@
 				7227AB8F1098A89700BE33D7 /* Run Script */,
 				7227ABE61098D5E400BE33D7 /* Run Script */,
 				1F06C5B52023EB1D003EBE6C /* ShellScript */,
+				1FDAA0F325281B5D00B92892 /* CopyFiles */,
 			);
 			buildRules = (
 			);
@@ -1963,7 +1977,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 1;
 			shellPath = /bin/sh;
-			shellScript = "mkdir -p $DSTROOT/usr/local/bin\n/bin/cp $BUILT_PRODUCTS_DIR/darwinbuild $DSTROOT/usr/local/bin";
+			shellScript = "mkdir -p $DSTROOT/usr/local/bin\n/bin/cp $BUILT_PRODUCTS_DIR/darwinbuild $DSTROOT/usr/local/bin\n";
 			showEnvVarsInLog = 0;
 		};
 		1F71A4FE2030F7A700020E2F /* ShellScript */ = {
@@ -2066,7 +2080,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "/bin/cp $DERIVED_FILE_DIR/darwinbuild $BUILT_PRODUCTS_DIR/darwinbuild";
+			shellScript = "/bin/cp $DERIVED_FILE_DIR/darwinbuild $BUILT_PRODUCTS_DIR/darwinbuild\n";
 		};
 		7227AC001098D78C00BE33D7 /* ShellScript */ = {
 			isa = PBXShellScriptBuildPhase;
